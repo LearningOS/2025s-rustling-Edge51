@@ -29,13 +29,13 @@ struct LinkedList<T> {
     end: Option<NonNull<Node<T>>>,
 }
 
-impl<T> Default for LinkedList<T> {
+impl<T: std::cmp::PartialOrd> Default for LinkedList<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T> LinkedList<T> {
+impl<T: std::cmp::PartialOrd> LinkedList<T> {
     pub fn new() -> Self {
         Self {
             length: 0,
@@ -69,15 +69,49 @@ impl<T> LinkedList<T> {
             },
         }
     }
-	pub fn merge(list_a:LinkedList<T>,list_b:LinkedList<T>) -> Self
-	{
-		//TODO
-		Self {
-            length: 0,
-            start: None,
-            end: None,
+    pub fn merge(mut list_a: LinkedList<T>, mut list_b: LinkedList<T>) -> Self {
+        let mut result = LinkedList::new();
+        let (mut a_node, mut b_node) = (list_a.start, list_b.start);
+
+        // 选择较小值的节点进行链接
+        let mut current = &mut result.start;
+
+        while let (Some(a_ptr), Some(b_ptr)) = (a_node, b_node) {
+            let a_val = unsafe { &(*a_ptr.as_ptr()).val };
+            let b_val = unsafe { &(*b_ptr.as_ptr()).val };
+
+            let chosen = if a_val < b_val {
+                &mut a_node
+            } else {
+                &mut b_node
+            };
+
+            let next = unsafe { (*chosen.unwrap().as_ptr()).next };
+            *current = *chosen;
+            current = unsafe { &mut (*current.unwrap().as_ptr()).next };
+            *chosen = next;
         }
-	}
+
+        // 链接剩余节点
+        let remaining = if a_node.is_some() { a_node } else { b_node };
+        if let Some(r) = remaining {
+            *current = Some(r);
+            result.end = get_tail(r);
+        } else {
+            result.end = None;
+        }
+
+        // 计算长度并返回
+        result.length = list_a.length + list_b.length;
+        result
+    }
+}
+// 辅助函数：获取链表尾部指针
+fn get_tail<T>(mut node: NonNull<Node<T>>) -> Option<NonNull<Node<T>>> {
+    while let Some(next) = unsafe { (*node.as_ptr()).next } {
+        node = next;
+    }
+    Some(node)
 }
 
 impl<T> Display for LinkedList<T>
